@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    // C# support + IntelliSense (required)
+    "ms-dotnettools.csdevkit",
+    // Docker compose / Dockerfile highlighting + GUI
+    "ms-azuretools.vscode-docker",
+    // Test .http files against the running API
+    "humao.rest-client",
+    // Consistent editor settings across machines
+    "EditorConfig.EditorConfig",
+    // NuGet package management UI inside VS Code
+    "jmrog.vscode-nuget-package-manager"
+  ]
+}

@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/PropIntelligence.API/Dockerfile
+    ports:
+      - "5050:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=PropIntelligence;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;
+      - Jwt__Secret=${JWT_SECRET}
+      - Jwt__Issuer=PropIntelligence
+      - Jwt__Audience=PropIntelligence
+      - Jwt__ExpiryMinutes=60
+      - Seed__AdminEmail=${ADMIN_EMAIL}
+      - Seed__AdminPassword=${ADMIN_PASSWORD}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - propnet
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SA_PASSWORD}
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${SA_PASSWORD}" -Q "SELECT 1" -C
+      interval: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - propnet
+
+volumes:
+  sqlserver_data:
+
+networks:
+  propnet:
+    driver: bridge

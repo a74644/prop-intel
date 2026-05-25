@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "▶ PropIntelligence API (Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/PropIntelligence.API/bin/Debug/net8.0/PropIntelligence.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/PropIntelligence.API",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5050"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s/swagger"
+      }
+    },
+    {
+      "name": "⚡ PropIntelligence API (Watch)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "watch",
+      "program": "${workspaceFolder}/src/PropIntelligence.API/bin/Debug/net8.0/PropIntelligence.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/PropIntelligence.API",
+      "stopAtEntry": false,
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5050"
+      }
+    }
+  ]
+}
