@@ -1,3 +1,4 @@
+using PropIntelligence.Application.DTOs;
 using PropIntelligence.Domain.Entities;
 using PropIntelligence.Domain.Enums;
 
@@ -79,4 +80,9 @@ public interface IPasswordService
 {
     string Hash(string plaintext);
     bool Verify(string plaintext, string hash);
+}
+
+public interface INaturalLanguageService
+{
+    Task<ParsedSearchParams> ParseSearchQueryAsync(string query, CancellationToken ct = default);
 }

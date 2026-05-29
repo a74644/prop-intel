@@ -11,6 +11,7 @@ import type {
   SearchParams,
   CreatePropertyRequest,
   RecordSaleRequest,
+  NaturalSearchResult,
 } from '../types'
 
 const BASE = '/api'
@@ -131,6 +132,12 @@ export const propertiesApi = {
     http<SalesHistoryDto>(`/properties/${id}/sales`, {
       method: 'POST',
       body:   JSON.stringify(data),
+    }),
+
+  naturalSearch: (query: string, pageSize = 20) =>
+    http<NaturalSearchResult>('/properties/search/natural', {
+      method: 'POST',
+      body:   JSON.stringify({ query, pageSize }),
     }),
 }
 

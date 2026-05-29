@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using PropIntelligence.Application.Interfaces;
+using PropIntelligence.Infrastructure.AI;
 using PropIntelligence.Infrastructure.Auth;
 using PropIntelligence.Infrastructure.Persistence;
 using PropIntelligence.Infrastructure.Persistence.Seed;
@@ -32,6 +33,10 @@ public static class DependencyInjection
         services.AddScoped<ITokenService,    TokenService>();
         services.AddScoped<IPasswordService, PasswordService>();
         services.AddScoped<DataSeeder>();
+
+        // ── AI / OpenRouter ───────────────────────────────────────────────────
+        services.AddHttpClient();
+        services.AddScoped<INaturalLanguageService, NaturalLanguageService>();
 
         // ── JWT Bearer ────────────────────────────────────────────────────────
         var jwtSecret = config["Jwt:Secret"]

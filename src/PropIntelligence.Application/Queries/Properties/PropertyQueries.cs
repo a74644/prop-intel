@@ -4,6 +4,7 @@ using PropIntelligence.Application.DTOs;
 using PropIntelligence.Application.DTOs.Common;
 using PropIntelligence.Application.Interfaces;
 using PropIntelligence.Domain.Enums;
+using PropIntelligence.Domain.Entities;
 
 namespace PropIntelligence.Application.Queries.Properties;
 
@@ -62,5 +63,46 @@ public class SearchPropertiesQueryHandler : IRequestHandler<SearchPropertiesQuer
         return new PagedResult<PropertySummaryDto>(
             items.Select(PropertyMapper.ToSummary),
             total, req.Page, req.PageSize);
+    }
+}
+
+// ── Natural Language Search ───────────────────────────────────────────────────
+
+public record NaturalLanguageSearchQuery(string Query, int PageSize = 20)
+    : IRequest<NaturalSearchResultDto>;
+
+public class NaturalLanguageSearchQueryHandler
+    : IRequestHandler<NaturalLanguageSearchQuery, NaturalSearchResultDto>
+{
+    private readonly INaturalLanguageService _nlService;
+    private readonly IPropertyRepository    _properties;
+
+    public NaturalLanguageSearchQueryHandler(
+        INaturalLanguageService nlService,
+        IPropertyRepository     properties)
+    {
+        _nlService  = nlService;
+        _properties = properties;
+    }
+
+    public async Task<NaturalSearchResultDto> Handle(
+        NaturalLanguageSearchQuery request, CancellationToken ct)
+    {
+        var parsed = await _nlService.ParseSearchQueryAsync(request.Query, ct);
+
+        AustralianState? state = Enum.TryParse<AustralianState>(parsed.State, true, out var s) ? s : null;
+        PropertyType?    type  = Enum.TryParse<PropertyType>(parsed.PropertyType, true, out var pt) ? pt : null;
+
+        var (items, total) = await _properties.SearchAsync(
+            parsed.Suburb, state, null,
+            type, parsed.MinBedrooms, parsed.MaxBedrooms,
+            parsed.MinPrice, parsed.MaxPrice,
+            1, request.PageSize, ct);
+
+        var results = new PagedResult<PropertySummaryDto>(
+            items.Select(PropertyMapper.ToSummary),
+            total, 1, request.PageSize);
+
+        return new NaturalSearchResultDto(request.Query, parsed, results);
     }
 }

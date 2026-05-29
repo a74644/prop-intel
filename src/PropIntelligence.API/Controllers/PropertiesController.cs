@@ -137,6 +137,29 @@ public class PropertiesController : ControllerBase
         return Ok(result);
     }
 
+    // ── POST /api/properties/search/natural ──────────────────────────────────
+
+    /// <summary>
+    /// Natural language property search powered by AI.
+    /// Pass a plain-English query and the AI extracts search parameters automatically.
+    /// Example: "3 bedroom house in Sydney under $2 million"
+    /// </summary>
+    [HttpPost("search/natural")]
+    [ProducesResponseType(typeof(NaturalSearchResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> NaturalSearch(
+        [FromBody] NaturalLanguageSearchRequest body,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Query))
+            return BadRequest(new { error = "Query must not be empty." });
+
+        var result = await _mediator.Send(
+            new NaturalLanguageSearchQuery(body.Query.Trim(), body.PageSize ?? 20), ct);
+
+        return Ok(result);
+    }
+
     // ── POST /api/properties ──────────────────────────────────────────────────
 
     /// <summary>Create a new property record. Requires Agent or Admin role.</summary>
@@ -241,3 +264,5 @@ public record UpdatePropertyRequest(
     int      CarSpaces,
     decimal? LandAreaSqm,
     decimal? FloorAreaSqm);
+
+public record NaturalLanguageSearchRequest(string Query, int? PageSize);

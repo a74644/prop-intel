@@ -3,11 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Search, SlidersHorizontal, Grid3X3, List, Map as MapIcon,
   X, ChevronLeft, ChevronRight,
-  Bed, Bath, Car, Maximize2, MapPin, Loader2, Building2,
+  Bed, Bath, Car, Maximize2, MapPin, Loader2, Building2, Sparkles,
 } from 'lucide-react'
 import { propertiesApi } from '../lib/api'
 import { formatPrice, formatDate, propertyTypeColor, stateColor, AU_STATES, PROPERTY_TYPES, geoLat, geoLon } from '../lib/utils'
-import type { PropertySummaryDto, PagedResult } from '../types'
+import type { PropertySummaryDto, PagedResult, ParsedSearchParams } from '../types'
 import PropertyMap, { type MapProperty } from '../components/PropertyMap'
 
 type ViewMode = 'grid' | 'list' | 'map'
@@ -36,6 +36,12 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
+  // ── AI Search state ──────────────────────────────────────────────────────────
+  const [aiMode,    setAiMode]    = useState(false)
+  const [aiQuery,   setAiQuery]   = useState('')
+  const [aiParsed,  setAiParsed]  = useState<ParsedSearchParams | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
   const doSearch = useCallback(async (pg = 1) => {
     setLoading(true)
     setError('')
@@ -62,6 +68,23 @@ export default function SearchPage() {
   useEffect(() => { doSearch() }, [])  // eslint-disable-line
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); doSearch(1) }
+
+  const doAiSearch = async () => {
+    if (!aiQuery.trim()) return
+    setAiLoading(true)
+    setError('')
+    setAiParsed(null)
+    try {
+      const data = await propertiesApi.naturalSearch(aiQuery.trim())
+      setAiParsed(data.parsed)
+      setResult(data.results)
+      setPage(1)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const clearFilters = () => {
     setSuburb(''); setState(''); setPropertyType('')
@@ -102,6 +125,67 @@ export default function SearchPage() {
       <aside className={`flex-shrink-0 border-r border-edge overflow-y-auto bg-void/40 transition-all duration-300 ${
         viewMode === 'map' ? 'w-[220px]' : 'w-[260px]'
       }`}>
+        {/* AI / Filters mode toggle */}
+        <div className="px-5 pt-5 pb-3 border-b border-edge">
+          <div className="flex bg-panel rounded-lg p-0.5 text-xs font-medium">
+            <button
+              onClick={() => { setAiMode(false); setAiParsed(null) }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-colors ${
+                !aiMode ? 'bg-card text-ink-0 shadow-sm' : 'text-ink-2 hover:text-ink-1'
+              }`}
+            >
+              <SlidersHorizontal size={12} /> Filters
+            </button>
+            <button
+              onClick={() => setAiMode(true)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-colors ${
+                aiMode ? 'bg-gold/20 text-gold-bright shadow-sm' : 'text-ink-2 hover:text-ink-1'
+              }`}
+            >
+              <Sparkles size={12} /> AI Search
+            </button>
+          </div>
+        </div>
+
+        {aiMode ? (
+          /* ── AI Search panel ────────────────────────────────────────────── */
+          <div className="p-5 space-y-4">
+            <p className="text-xs text-ink-2 leading-relaxed">
+              Describe what you're looking for in plain English.
+            </p>
+            <textarea
+              className="input resize-none text-sm leading-relaxed"
+              rows={5}
+              placeholder={'3 bedroom house in Sydney\nunder $2 million'}
+              value={aiQuery}
+              onChange={e => setAiQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) doAiSearch() }}
+            />
+            <p className="text-[10px] text-ink-2 font-mono">⌘↵ to search</p>
+            <button
+              type="button"
+              onClick={doAiSearch}
+              disabled={aiLoading || !aiQuery.trim()}
+              className="btn btn-gold w-full"
+            >
+              {aiLoading
+                ? <><Loader2 size={14} className="animate-spin" /> Thinking…</>
+                : <><Sparkles size={14} /> Search with AI</>}
+            </button>
+            <div className="pt-2 space-y-1.5">
+              {['3BR house in Bondi under $3M', 'Apartment in Melbourne under $600k', '4 bed villa in Perth'].map(ex => (
+                <button
+                  key={ex}
+                  type="button"
+                  onClick={() => setAiQuery(ex)}
+                  className="w-full text-left text-xs text-ink-2 hover:text-gold-bright px-3 py-1.5 rounded-lg border border-edge hover:border-gold/40 transition-colors font-mono"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSearch} className="p-5 space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium text-ink-0">
@@ -160,21 +244,41 @@ export default function SearchPage() {
             {loading ? 'Searching…' : 'Search'}
           </button>
         </form>
+        )}
       </aside>
 
       {/* ── Results area ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-edge bg-canvas/90 backdrop-blur-sm flex-shrink-0">
-          <div className="text-sm text-ink-2 font-mono">
-            {loading ? (
-              <span className="flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> Searching…</span>
+          <div className="text-sm text-ink-2 font-mono flex flex-col gap-1">
+            {(loading || aiLoading) ? (
+              <span className="flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> {aiLoading ? 'AI thinking…' : 'Searching…'}</span>
             ) : result ? (
               <span>
                 <span className="text-ink-0 font-semibold tabular">{result.totalCount}</span>
-                {' '}properties{hasFilters ? ' matching' : ' indexed'}
+                {' '}properties{(hasFilters || aiParsed) ? ' matching' : ' indexed'}
               </span>
             ) : null}
+            {aiParsed && (
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span className="flex items-center gap-1 text-gold-bright text-[10px]">
+                  <Sparkles size={10} /> AI interpreted:
+                </span>
+                {[
+                  aiParsed.suburb       && `${aiParsed.suburb}`,
+                  aiParsed.state        && aiParsed.state,
+                  aiParsed.propertyType && aiParsed.propertyType,
+                  aiParsed.minBedrooms  && `${aiParsed.minBedrooms}BR+`,
+                  aiParsed.minPrice     && `from $${(aiParsed.minPrice/1e6).toFixed(1)}M`,
+                  aiParsed.maxPrice     && `under $${(aiParsed.maxPrice/1e6).toFixed(1)}M`,
+                ].filter(Boolean).map((chip, i) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-gold/10 text-gold-bright border border-gold/20">
+                    {chip}
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3">

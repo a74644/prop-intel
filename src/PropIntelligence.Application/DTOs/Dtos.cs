@@ -1,3 +1,4 @@
+using PropIntelligence.Application.DTOs.Common;
 using PropIntelligence.Domain.Enums;
 
 namespace PropIntelligence.Application.DTOs;
@@ -185,3 +186,19 @@ public record RecordSaleRequest(
     string      AgencyName,
     string?     AgentName,
     int?        DaysOnMarket);
+
+// ── Natural Language Search ───────────────────────────────────────────────────
+
+public record ParsedSearchParams(
+    string?  Suburb,
+    string?  State,
+    string?  PropertyType,
+    decimal? MinPrice,
+    decimal? MaxPrice,
+    int?     MinBedrooms,
+    int?     MaxBedrooms);
+
+public record NaturalSearchResultDto(
+    string               Query,
+    ParsedSearchParams   Parsed,
+    PagedResult<PropertySummaryDto> Results);

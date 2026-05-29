@@ -187,3 +187,20 @@ export interface RecordSaleRequest {
   agentName?: string
   daysOnMarket?: number
 }
+
+// ── Natural Language Search ───────────────────────────────────────────────────
+export interface ParsedSearchParams {
+  suburb: string | null
+  state: string | null
+  propertyType: string | null
+  minPrice: number | null
+  maxPrice: number | null
+  minBedrooms: number | null
+  maxBedrooms: number | null
+}
+
+export interface NaturalSearchResult {
+  query: string
+  parsed: ParsedSearchParams
+  results: PagedResult<PropertySummaryDto>
+}

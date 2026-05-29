@@ -57,6 +57,10 @@ For local development, create `src/PropIntelligence.API/appsettings.Development.
   "Seed": {
     "AdminEmail": "admin@propintelligence.local",
     "AdminPassword": "Admin@PropIntel2024!"
+  },
+  "OpenRouter": {
+    "ApiKey": "sk-or-v1-your-key-here",
+    "Model": "google/gemini-2.0-flash-exp:free"
   }
 }
 ```
