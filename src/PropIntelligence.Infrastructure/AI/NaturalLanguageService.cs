@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PropIntelligence.Application.DTOs;
 using PropIntelligence.Application.Interfaces;
 
@@ -37,18 +38,23 @@ public sealed class NaturalLanguageService : INaturalLanguageService
         - Return ONLY the JSON object — no explanation, no markdown, no code fences
         """;
 
-    private readonly IHttpClientFactory _factory;
-    private readonly string             _apiKey;
-    private readonly string             _model;
+    private readonly IHttpClientFactory          _factory;
+    private readonly ILogger<NaturalLanguageService> _logger;
+    private readonly string                      _apiKey;
+    private readonly string                      _model;
 
     private static readonly JsonSerializerOptions _jsonOpts =
         new() { PropertyNameCaseInsensitive = true };
 
-    public NaturalLanguageService(IHttpClientFactory factory, IConfiguration config)
+    public NaturalLanguageService(
+        IHttpClientFactory factory,
+        IConfiguration config,
+        ILogger<NaturalLanguageService> logger)
     {
         _factory = factory;
+        _logger  = logger;
         _apiKey  = config["OpenRouter:ApiKey"] ?? string.Empty;
-        _model   = config["OpenRouter:Model"]  ?? "google/gemini-2.0-flash-exp:free";
+        _model   = config["OpenRouter:Model"]  ?? "openrouter/free";
     }
 
     public async Task<ParsedSearchParams> ParseSearchQueryAsync(
@@ -75,21 +81,31 @@ public sealed class NaturalLanguageService : INaturalLanguageService
                     new { role = "system", content = SystemPrompt },
                     new { role = "user",   content = query        },
                 },
-                max_tokens  = 300,
+                max_tokens  = 600,
                 temperature = 0,
             };
 
             using var response = await client.PostAsJsonAsync(
                 "https://openrouter.ai/api/v1/chat/completions", requestBody, ct);
 
-            if (!response.IsSuccessStatusCode) return empty;
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("[OpenRouter] HTTP {Status} — {Body}", (int)response.StatusCode, errorBody);
+                return empty;
+            }
 
-            var resp    = await response.Content.ReadFromJsonAsync<OpenRouterResponse>(_jsonOpts, ct);
+            var rawJson = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogInformation("[OpenRouter] Raw response: {Raw}", rawJson);
+
+            var resp    = JsonSerializer.Deserialize<OpenRouterResponse>(rawJson, _jsonOpts);
             var content = resp?.Choices?.FirstOrDefault()?.Message?.Content;
+
+            _logger.LogInformation("[OpenRouter] Extracted content: {Content}", content ?? "(null)");
 
             if (string.IsNullOrWhiteSpace(content)) return empty;
 
-            content = StripMarkdownFences(content.Trim());
+            content = ExtractJson(content.Trim());
 
             var ai = JsonSerializer.Deserialize<AiParsedParams>(content, _jsonOpts);
             return ai is null
@@ -99,19 +115,21 @@ public sealed class NaturalLanguageService : INaturalLanguageService
                     ai.MinPrice, ai.MaxPrice,
                     ai.MinBedrooms, ai.MaxBedrooms);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "[OpenRouter] Request failed for query: {Query}", query);
             return empty;
         }
     }
 
-    private static string StripMarkdownFences(string content)
+    // Extract the first complete JSON object from the content, stripping any
+    // markdown fences or surrounding text the model may have added.
+    private static string ExtractJson(string content)
     {
-        if (!content.StartsWith("```")) return content;
-        var start = content.IndexOf('\n');
-        var end   = content.LastIndexOf("```");
+        var start = content.IndexOf('{');
+        var end   = content.LastIndexOf('}');
         return (start >= 0 && end > start)
-            ? content[(start + 1)..end].Trim()
+            ? content[start..(end + 1)]
             : content;
     }
 

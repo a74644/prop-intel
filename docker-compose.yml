@@ -16,6 +16,8 @@ services:
       - Jwt__ExpiryMinutes=60
       - Seed__AdminEmail=${ADMIN_EMAIL}
       - Seed__AdminPassword=${ADMIN_PASSWORD}
+      - OpenRouter__ApiKey=${OpenRouter__ApiKey}
+      - OpenRouter__Model=${OpenRouter__Model:-openrouter/free}
     depends_on:
       sqlserver:
         condition: service_healthy

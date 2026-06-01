@@ -60,7 +60,7 @@ For local development, create `src/PropIntelligence.API/appsettings.Development.
   },
   "OpenRouter": {
     "ApiKey": "sk-or-v1-your-key-here",
-    "Model": "google/gemini-2.0-flash-exp:free"
+    "Model": "openrouter/free"
   }
 }
 ```
